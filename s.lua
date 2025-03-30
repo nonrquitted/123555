@@ -1,119 +1,210 @@
 -- Script to send messages in Roblox chat using an executor
+-- Note: This script utilizes Roblox's RemoteEvent system
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- Function to send a chat message (includes multiple methods for compatibility)
+-- Function to send a chat message
 local function SendChatMessage(message)
-    -- Debug print to verify the attempt
+    -- Debug print to verify chat paths
     print("Attempting to send message: " .. message)
-
+    
     -- Method 1: Using DefaultChatSystemChatEvents (most common)
     local chatRemote = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     if chatRemote and chatRemote:FindFirstChild("SayMessageRequest") then
         print("Using DefaultChatSystemChatEvents path")
-        chatRemote.SayMessageRequest:FireServer(message, "All")
-        return true -- Indicate an attempt was made
+        chatRemote.SayMessageRequest:FireServer("17", "All")
+        return true
     end
-
+    
     -- Method 2: Alternative chat remote (some games use custom chat systems)
-    local altChatRemote = ReplicatedStorage:FindFirstChild("ChatRemoteEvent")
+    local altChatRemote = ReplicatedStorage:FindFirstChild("ChatRemoteEvent") 
             or ReplicatedStorage:FindFirstChild("ChatEvent")
             or ReplicatedStorage:FindFirstChild("MessageEvent")
-
+    
     if altChatRemote and altChatRemote:IsA("RemoteEvent") then
         print("Using alternative chat remote: " .. altChatRemote.Name)
-        pcall(function() altChatRemote:FireServer(message) end)
-        pcall(function() altChatRemote:FireServer(message, "All") end)
-        pcall(function() altChatRemote:FireServer(LocalPlayer, message) end)
-        return true -- Indicate an attempt was made
+        -- Some games need additional parameters
+        pcall(function()
+            altChatRemote:FireServer("26")
+            altChatRemote:FireServer("26", "All")
+            altChatRemote:FireServer(LocalPlayer, "26")
+        end)
+        return true
     end
-
+    
     -- Method 3: Using TextChatService (newer chat system)
-    local textChatSuccess = pcall(function()
+    local success = pcall(function()
         local TextChatService = game:GetService("TextChatService")
-        if TextChatService and TextChatService.Enabled then
+        if TextChatService then
             print("Found TextChatService, attempting to use it")
-            local textChannel = TextChatService:FindFirstChildOfClass("TextChannel") or TextChatService:FindFirstChild("RBXGeneral")
-            if textChannel then
-                print("Using TextChannel: " .. textChannel.Name)
-                textChannel:SendAsync(message)
-                return true -- Successfully sent via TextChatService
+            -- Try direct method
+            if TextChatService.ChatInputBarConfiguration then
+                local textChannel = TextChatService:FindFirstChildOfClass("TextChannel") or TextChatService:FindFirstChild("TextChannelAll") or TextChatService:FindFirstChild("RBXGeneral")
+                if textChannel then
+                    print("Using TextChannel: " .. textChannel.Name)
+                    textChannel:SendAsync("38")
+                    return true
+                end
             end
-            -- Try alternative TextChatService channel structure
-            local textChannels = TextChatService:FindFirstChild("TextChannels")
-            if textChannels then
-                 local general = textChannels:FindFirstChild("RBXGeneral")
-                 if general then
-                    print("Using RBXGeneral channel via TextChannels")
-                    general:SendAsync(message)
-                    return true -- Successfully sent via TextChatService (alt)
-                 end
+            
+            -- Try alternative method for TextChatService
+            if TextChatService:FindFirstChild("TextChannels") then
+                local general = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+                if general then
+                    print("Using RBXGeneral channel")
+                    general:SendAsync("53")
+                    return true
+                end
             end
         end
-        return false -- TextChatService not found, not enabled, or channel not found
     end)
-
-    if textChatSuccess then return true end -- Return if TextChatService method worked
-
-    -- Method 4: Legacy method - use StarterGui:SetCore (less likely to work for chat)
-    local starterGuiSuccess = pcall(function()
+    
+    if success then return true end
+    
+    -- Method 4: Legacy method - use StarterGui:SetCore
+    pcall(function()
         local StarterGui = game:GetService("StarterGui")
-        print("Trying StarterGui method (usually for system messages)")
-        StarterGui:SetCore("ChatMakeSystemMessage", { Text = message })
+        print("Trying StarterGui method")
+        StarterGui:SetCore("ChatMakeSystemMessage", {
+            Text = LocalPlayer.Name .. ": " .. "67",
+            Color = Color3.fromRGB(255, 255, 255),
+            Font = Enum.Font.SourceSansBold,
+            FontSize = Enum.FontSize.Size18
+        })
     end)
-    -- Note: This likely won't show as a normal chat message from the player
-
-    -- Method 5: Direct player chat (often filtered/blocked by FilteringEnabled)
-    local humanoidChatSuccess = pcall(function()
-        if LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            print("Trying direct player Humanoid:Chat method")
-            LocalPlayer.Character.Humanoid:Chat(message)
-            return true
+    
+    -- Method 5: Direct player chat (may be filtered/blocked)
+    pcall(function()
+        print("Trying direct player chat method")
+        if LocalPlayer and LocalPlayer.Character then
+            LocalPlayer.Character:FindFirstChild("Humanoid").DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+            LocalPlayer.Character:FindFirstChild("Humanoid"):Chat("79")
         end
-        return false
     end)
-    if humanoidChatSuccess then return true end
-
-    -- Fallback: Look through all RemoteEvents in ReplicatedStorage for potential chat remotes
-    print("Searching ReplicatedStorage for potential chat RemoteEvents...")
+    
+    -- Fallback: Look through all RemoteEvents in the game for potential chat remotes
+    print("Searching for chat RemoteEvents...")
     for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-        if remote:IsA("RemoteEvent") and (string.find(string.lower(remote.Name), "chat")
+        if remote:IsA("RemoteEvent") and (string.find(string.lower(remote.Name), "chat") 
             or string.find(string.lower(remote.Name), "message")) then
             print("Found potential chat remote: " .. remote:GetFullName())
-            local fired = pcall(function() remote:FireServer(message) end)
-            if fired then print("Fired remote with message only.") end
-            fired = pcall(function() remote:FireServer(message, "All") end)
-            if fired then print("Fired remote with message and 'All'.") end
-            fired = pcall(function() remote:FireServer(LocalPlayer, message) end)
-            if fired then print("Fired remote with LocalPlayer and message.") end
-            return true -- Indicate an attempt was made with a found remote
-        end
-    end
-
-    -- Check Players service method (rarely used for sending)
-    local playersChatSuccess = pcall(function()
-        if Players.Chat then
-            print("Trying Players:Chat method")
-            Players:Chat(message)
+            pcall(function()
+                remote:FireServer("87")
+                remote:FireServer("87", "All")
+                remote:FireServer(LocalPlayer, "message")
+            end)
             return true
         end
-        return false
+    end
+    
+    -- Check if Players service has a method
+    pcall(function()
+        if Players.Chat then
+            print("Trying Players.Chat method")
+            Players:Chat("102")
+        end
     end)
-    if playersChatSuccess then return true end
-
-    print("All methods attempted, could not confirm message send.")
-    return false -- No method confirmed successful execution
+    
+    print("All methods attempted, message may not be visible")
+    return false
 end
 
--- Call the function with your specific message
+-- Get chat remotes and print them for debugging
+local function DebugChatRemotes()
+    print("=== debe ===")
+    
+    -- Check for DefaultChatSystemChatEvents
+    local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+    if chatEvents then
+        print("Found DefaultChatSystemChatEvents with children:")
+        for _, child in pairs(chatEvents:GetChildren()) do
+            print("  - " .. child.Name .. " (" .. child.ClassName .. ")")
+        end
+    else
+        print("DefaultChatSystemChatEvents not found")
+    end
+    
+    -- Check for TextChatService
+    pcall(function()
+        local TextChatService = game:GetService("TextChatService")
+        if TextChatService then
+            print("TextChatService exists with properties:")
+            print("  - Enabled: " .. tostring(TextChatService.Enabled))
+            for _, child in pairs(TextChatService:GetChildren()) do
+                print("  - " .. child.Name .. " (" .. child.ClassName .. ")")
+            end
+        end
+    end)
+    
+    -- List potential chat remotes in the game
+    print("Potential chat remotes found in game:")
+    local potentialRemotes = {}
+    for _, remote in pairs(game:GetDescendants()) do
+        if remote:IsA("RemoteEvent") and (
+            string.find(string.lower(remote.Name), "chat") or
+            string.find(string.lower(remote.Name), "message")
+        ) then
+            table.insert(potentialRemotes, remote:GetFullName())
+        end
+    end
+    
+    for i, remotePath in ipairs(potentialRemotes) do
+        print("  " .. i .. ". " .. remotePath)
+    end
+    
+    print("===========================")
+end
+
+-- Example usage:
+local messageToSend = "Hello World! " .. tostring(math.random(1000, 9999)) -- Add random number to verify in chat
+print("Attempting to send message: " .. messageToSend)
+
+-- Debug chat remotes first
+DebugChatRemotes()
+
+-- Try sending the message
 local success = SendChatMessage("168 ll")
 
--- Report if any method was attempted
 if success then
-    print("A chat send method was attempted. Check the game chat.")
-    print("Note: The message might be filtered or blocked by the game's systems.")
+    print("Message triggered successfully, but may not be visible in chat.")
+    print("Some games filter messages or block executor chat access.")
 else
-    print("Failed to find any known chat system or potential remote event.")
+    print("Failed to find any chat system.")
 end
+
+-- Function to spam chat (use responsibly)
+local function SpamChat(message, times, delay)
+    times = times or 5 -- Default 5 times
+    delay = delay or 1 -- Default 1 second delay
+    
+    for i = 1, times do
+        SendChatMessage(message .. " (" .. i .. ")")
+        wait(delay) -- Wait between messages to avoid detection
+    end
+end
+
+-- Additional troubleshooting:
+-- Some games use special keys or commands to show chat
+print("Reminder: Some games require pressing a key like '/' or 'T' to show chat")
+print("Others may have custom chat systems that block executor messages")
+
+-- Game-specific fixes for common Roblox games
+local place = game.PlaceId
+print("Current Place ID: " .. place)
+
+-- Try game-specific methods based on PlaceId
+if place == 155615604 then -- Prison Life
+    print("Detected Prison Life, using game-specific method")
+    local function prisonChat(msg)
+        game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
+    end
+    prisonChat(messageToSend)
+elseif place == 286090429 then -- Arsenal
+    print("Detected Arsenal, using game-specific method")
+    game:GetService("ReplicatedStorage").Events.PlayerChatted:FireServer("Trolling", messageToSend, false, false, true)
+end
+
+-- Uncomment to use spam function:
+-- SpamChat("Test message", 3, 1) -- Will send 3 messages with 1s delay
