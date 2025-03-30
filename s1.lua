@@ -1,3 +1,6 @@
+-- Script to send messages in Roblox chat using an executor
+-- Note: This script utilizes Roblox's RemoteEvent system
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
@@ -6,7 +9,7 @@ local LocalPlayer = Players.LocalPlayer
 local function SendChatMessage(message)
     -- Debug print to verify chat paths
     print("Attempting to send message: " .. message)
-
+    
     -- Method 1: Using DefaultChatSystemChatEvents (most common)
     local chatRemote = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     if chatRemote and chatRemote:FindFirstChild("SayMessageRequest") then
@@ -14,9 +17,12 @@ local function SendChatMessage(message)
         chatRemote.SayMessageRequest:FireServer(message, "All")
         return true
     end
-	@@ -19,40 +24,154 @@ local function SendChatMessage(message)
+    
+    -- Method 2: Alternative chat remote (some games use custom chat systems)
+    local altChatRemote = ReplicatedStorage:FindFirstChild("ChatRemoteEvent") 
+            or ReplicatedStorage:FindFirstChild("ChatEvent")
             or ReplicatedStorage:FindFirstChild("MessageEvent")
-
+    
     if altChatRemote and altChatRemote:IsA("RemoteEvent") then
         print("Using alternative chat remote: " .. altChatRemote.Name)
         -- Some games need additional parameters
@@ -27,7 +33,7 @@ local function SendChatMessage(message)
         end)
         return true
     end
-
+    
     -- Method 3: Using TextChatService (newer chat system)
     local success = pcall(function()
         local TextChatService = game:GetService("TextChatService")
@@ -42,7 +48,7 @@ local function SendChatMessage(message)
                     return true
                 end
             end
-
+            
             -- Try alternative method for TextChatService
             if TextChatService:FindFirstChild("TextChannels") then
                 local general = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
@@ -54,9 +60,9 @@ local function SendChatMessage(message)
             end
         end
     end)
-
+    
     if success then return true end
-
+    
     -- Method 4: Legacy method - use StarterGui:SetCore
     pcall(function()
         local StarterGui = game:GetService("StarterGui")
@@ -68,7 +74,7 @@ local function SendChatMessage(message)
             FontSize = Enum.FontSize.Size18
         })
     end)
-
+    
     -- Method 5: Direct player chat (may be filtered/blocked)
     pcall(function()
         print("Trying direct player chat method")
@@ -77,7 +83,7 @@ local function SendChatMessage(message)
             LocalPlayer.Character:FindFirstChild("Humanoid"):Chat(message)
         end
     end)
-
+    
     -- Fallback: Look through all RemoteEvents in the game for potential chat remotes
     print("Searching for chat RemoteEvents...")
     for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
@@ -92,7 +98,7 @@ local function SendChatMessage(message)
             return true
         end
     end
-
+    
     -- Check if Players service has a method
     pcall(function()
         if Players.Chat then
@@ -100,7 +106,7 @@ local function SendChatMessage(message)
             Players:Chat(message)
         end
     end)
-
+    
     print("All methods attempted, message may not be visible")
     return false
 end
@@ -108,7 +114,7 @@ end
 -- Get chat remotes and print them for debugging
 local function DebugChatRemotes()
     print("=== CHAT REMOTE DEBUGGING ===")
-
+    
     -- Check for DefaultChatSystemChatEvents
     local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     if chatEvents then
@@ -119,7 +125,7 @@ local function DebugChatRemotes()
     else
         print("DefaultChatSystemChatEvents not found")
     end
-
+    
     -- Check for TextChatService
     pcall(function()
         local TextChatService = game:GetService("TextChatService")
@@ -131,7 +137,7 @@ local function DebugChatRemotes()
             end
         end
     end)
-
+    
     -- List potential chat remotes in the game
     print("Potential chat remotes found in game:")
     local potentialRemotes = {}
@@ -143,11 +149,11 @@ local function DebugChatRemotes()
             table.insert(potentialRemotes, remote:GetFullName())
         end
     end
-
+    
     for i, remotePath in ipairs(potentialRemotes) do
         print("  " .. i .. ". " .. remotePath)
     end
-
+    
     print("===========================")
 end
 
@@ -169,9 +175,10 @@ else
 end
 
 -- Function to spam chat (use responsibly)
-	@@ -61,10 +180,31 @@ local function SpamChat(message, times, delay)
+local function SpamChat(message, times, delay)
+    times = times or 5 -- Default 5 times
     delay = delay or 1 -- Default 1 second delay
-
+    
     for i = 1, times do
         SendChatMessage(message .. " (" .. i .. ")")
         wait(delay) -- Wait between messages to avoid detection
