@@ -165,7 +165,7 @@ print("Attempting to send message: " .. messageToSend)
 DebugChatRemotes()
 
 -- Try sending the message
-local success = SendChatMessage(messageToSend)
+local success = SendChatMessage("168 ll")
 
 if success then
     print("Message triggered successfully, but may not be visible in chat.")
