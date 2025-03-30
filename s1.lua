@@ -113,7 +113,7 @@ end
 
 -- Get chat remotes and print them for debugging
 local function DebugChatRemotes()
-    print("=== CHAT REMOTE DEBUGGING ===")
+    print("=== debe ===")
     
     -- Check for DefaultChatSystemChatEvents
     local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
